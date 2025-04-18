@@ -7,17 +7,17 @@ import (
 	"strings"
 )
 
-type person struct {
+type Person struct {
 	Id    int    `json:"id"`
 	Name  string `json:"name"`
 	Age   int    `json:"age"`
 	Phone string `json:"phone"`
 }
 
-var people []person
+var people []Person
 var nextId = 1
 
-func findPersonByID(id int) (*person, int) {
+func findPersonByID(id int) (*Person, int) {
 	for i, p := range people {
 		if p.Id == id {
 			return &people[i], i
@@ -40,13 +40,13 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func getPeopleHandler(w http.ResponseWriter, r *http.Request) {
+func getPeopleHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(people)
 }
 
 func createPersonHandler(w http.ResponseWriter, r *http.Request) {
-	var newPerson person
+	var newPerson Person
 	if err := json.NewDecoder(r.Body).Decode(&newPerson); err != nil {
 		jsonError(w, "Invalid input", http.StatusBadRequest)
 		return
@@ -94,7 +94,7 @@ func updatePersonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var updated person
+	var updated Person
 	if err := json.NewDecoder(r.Body).Decode(&updated); err != nil {
 		jsonError(w, "Invalid input", http.StatusBadRequest)
 		return
@@ -134,7 +134,7 @@ func searchPeopleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var results []person
+	var results []Person
 	for _, p := range people {
 		if strings.Contains(strings.ToLower(p.Name), strings.ToLower(query)) {
 			results = append(results, p)
@@ -145,8 +145,8 @@ func searchPeopleHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
-func deleteAllPeopleHandler(w http.ResponseWriter, r *http.Request) {
-	people = []person{}
+func deleteAllPeopleHandler(w http.ResponseWriter, _ *http.Request) {
+	people = []Person{}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -165,7 +165,7 @@ func patchPersonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var updated person
+	var updated Person
 	if err := json.NewDecoder(r.Body).Decode(&updated); err != nil {
 		jsonError(w, "Invalid input", http.StatusBadRequest)
 		return
