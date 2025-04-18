@@ -16,7 +16,6 @@ type person struct {
 var people []person
 var nextId = 1
 
-// === Yardımcı Fonksiyon ===
 func findPersonByID(id int) (*person, int) {
 	for i, p := range people {
 		if p.Id == id {
