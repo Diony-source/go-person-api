@@ -9,146 +9,138 @@ import (
 	"testing"
 )
 
-type MemoryStore struct {
-	Data []Person
-}
-
-func (m *MemoryStore) Save(people []Person) error {
-	m.Data = people
-	return nil
-}
-
-func (m *MemoryStore) Load() ([]Person, error) {
-	return m.Data, nil
-}
-
 func TestHelloHandler(t *testing.T) {
 	req := httptest.NewRequest("GET", "/hello", nil)
-	w := httptest.NewRecorder()
-	helloHandler(w, req)
+	rec := httptest.NewRecorder()
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
+	helloHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "Hello") {
+		t.Error("Expected greeting message")
 	}
 }
 
 func TestCreateAndGetPeople(t *testing.T) {
-	people = []Person{} // Reset data
+	people = []Person{}
 	nextId = 1
 
-	// Create Person
-	p := Person{Name: "Diony", Age: 24, Phone: "12345"}
-	body, _ := json.Marshal(p)
+	person := Person{Name: "Diony", Age: 24, Phone: "12345"}
+	body, _ := json.Marshal(person)
+
 	req := httptest.NewRequest("POST", "/people", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	createPersonHandler(w, req)
+	rec := httptest.NewRecorder()
 
-	if w.Code != http.StatusCreated {
-		t.Errorf("Expected status 201, got %d", w.Code)
+	createPersonHandler(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Errorf("Expected 201, got %d", rec.Code)
 	}
 
-	// Get people
+	// Check if added
 	req = httptest.NewRequest("GET", "/people", nil)
-	w = httptest.NewRecorder()
-	getPeopleHandler(w, req)
+	rec = httptest.NewRecorder()
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
+	getPeopleHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
 	}
 
-	var peopleResponse []Person
-	_ = json.Unmarshal(w.Body.Bytes(), &peopleResponse)
-
-	if len(peopleResponse) != 1 {
-		t.Errorf("Expected 1 person, got %d", len(peopleResponse))
-	}
-	if peopleResponse[0].Name != "Diony" {
-		t.Errorf("Expected person name 'Diony', got %s", peopleResponse[0].Name)
+	var data []Person
+	_ = json.Unmarshal(rec.Body.Bytes(), &data)
+	if len(data) != 1 {
+		t.Errorf("Expected 1 person, got %d", len(data))
 	}
 }
 
-func TestPatchPerson(t *testing.T) {
-	store := &MemoryStore{}
-	people := []Person{
-		{Id: 1, Name: "Diony", Age: 24, Phone: "123"},
-	}
-	store.Save(people)
+func TestGetPersonByIDHandler(t *testing.T) {
+	people = []Person{{Id: 1, Name: "Test", Age: 20, Phone: "1111"}}
+	req := httptest.NewRequest("GET", "/people/1", nil)
+	rec := httptest.NewRecorder()
 
-	// simulate patch
-	updated := Person{Name: "Diony", Age: 24, Phone: "99999"}
-	original := people[0]
+	getPersonByIDHandler(rec, req)
 
-	if updated.Name != "" {
-		original.Name = updated.Name
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
 	}
-	if updated.Age != 0 {
-		original.Age = updated.Age
-	}
-	if updated.Phone != "" {
-		original.Phone = updated.Phone
-	}
-
-	if original.Name != "Diony" {
-		t.Errorf("Expected name 'Diony', got %s", original.Name)
-	}
-	if original.Age != 24 {
-		t.Errorf("Expected age 24, got %d", original.Age)
-	}
-	if original.Phone != "99999" {
-		t.Errorf("Expected phone '99999', got %s", original.Phone)
+	if !strings.Contains(rec.Body.String(), "Test") {
+		t.Error("Expected person with name Test")
 	}
 }
 
+func TestPatchPersonHandler(t *testing.T) {
+	people = []Person{{Id: 1, Name: "Old", Age: 20, Phone: "1111"}}
+	payload := Person{Phone: "9999"}
+	body, _ := json.Marshal(payload)
 
-func TestSearchQuery(t *testing.T) {
-	store := &MemoryStore{}
-	people := []Person{
-		{Name: "Diony", Age: 24},
-		{Name: "Alice", Age: 30},
-	}
-	store.Save(people)
+	req := httptest.NewRequest("PATCH", "/people/1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
 
-	var result []Person
-	query := "diony"
-	for _, p := range people {
-		if strings.Contains(strings.ToLower(p.Name), query) {
-			result = append(result, p)
-		}
+	patchPersonHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
 	}
 
-	if len(result) != 1 || result[0].Name != "Diony" {
-		t.Errorf("Search failed: expected Diony, got %+v", result)
+	if !strings.Contains(rec.Body.String(), "9999") {
+		t.Error("Phone not updated")
+	}
+}
+
+func TestDeletePersonHandler(t *testing.T) {
+	people = []Person{{Id: 1, Name: "DeleteMe", Age: 20, Phone: "0000"}}
+	req := httptest.NewRequest("DELETE", "/people/1", nil)
+	rec := httptest.NewRecorder()
+
+	deletePersonHandler(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("Expected 204, got %d", rec.Code)
+	}
+
+	if len(people) != 0 {
+		t.Error("Person not deleted")
+	}
+}
+
+func TestSearchPeopleHandler(t *testing.T) {
+	people = []Person{
+		{Name: "Diony"},
+		{Name: "Alice"},
+	}
+
+	req := httptest.NewRequest("GET", "/people?query=diony", nil)
+	rec := httptest.NewRecorder()
+
+	searchPeopleHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "Diony") {
+		t.Error("Expected to find Diony")
 	}
 }
 
 func TestStatsHandler(t *testing.T) {
-	people := []Person{
+	people = []Person{
 		{Name: "A", Age: 20},
 		{Name: "B", Age: 30},
 	}
-
-	total := len(people)
-	sum := 0
-	for _, p := range people {
-		sum += p.Age
-	}
-	avg := sum / total
-
-	if avg != 25 {
-		t.Errorf("Expected average age 25, got %d", avg)
-	}
-}
-
-func TestJsonError_InvalidID(t *testing.T) {
+	req := httptest.NewRequest("GET", "/people/stats", nil)
 	rec := httptest.NewRecorder()
-	jsonError(rec, "Invalid ID", http.StatusBadRequest)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("Expected 400, got %d", rec.Code)
+	statsHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
 	}
-
-	if !strings.Contains(rec.Body.String(), `"Invalid ID"`) {
-		t.Errorf("Unexpected body: %s", rec.Body.String())
+	if !strings.Contains(rec.Body.String(), `"average_age":25`) {
+		t.Error("Average age incorrect")
 	}
 }
