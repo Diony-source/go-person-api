@@ -1,26 +1,25 @@
 # 👤 Go Person API
 
-A simple RESTful API built in Go for managing contacts.  
-Supports CRUD operations, search functionality, stats summary, and robust testing setup.
+A fully functional RESTful API built with Go (Golang).  
+This project allows you to manage people records using standard CRUD operations, with in-memory storage and clean handler architecture.
 
 ---
 
 ## 🚀 Features
 
-- Add, update, delete and list people
-- Get a person by ID
-- Partial update with PATCH
-- Delete all people
-- Search people by name (case-insensitive)
-- Summary stats: total people + average age
-- JSON error response helper for cleaner error handling
-- Full unit test coverage with mock storage
+- Add, list, update, delete, search and patch people
+- Get statistics: total people, average age
+- Query people by name (case-insensitive search)
+- Proper error handling using helper functions
+- `jsonError`, `writeJSON`, `getIDFromPath` helpers for cleaner handlers
+- Modular and readable design
+- 🔬 Includes full test coverage using `net/http/httptest`
 
 ---
 
 ## 📦 Installation
 
-Make sure you have Go installed on your machine.
+> Make sure [Go](https://golang.org/dl/) is installed.
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/go-person-api.git
@@ -29,55 +28,81 @@ go mod tidy
 go run main.go
 ```
 
-Visit the API at: `http://localhost:8080`
+Server will run on:
+
+```
+http://localhost:8080
+```
 
 ---
 
-## 📚 API Endpoints
+## 🔧 API Endpoints
 
-| Method | Endpoint         | Description                       |
-|--------|------------------|-----------------------------------|
-| GET    | /people          | Get all people                    |
-| GET    | /people?query=x  | Search people by name             |
-| POST   | /people          | Add new person                    |
-| DELETE | /people          | Delete all people                 |
-| GET    | /people/{id}     | Get person by ID                  |
-| PUT    | /people/{id}     | Update person completely          |
-| PATCH  | /people/{id}     | Update person partially           |
-| DELETE | /people/{id}     | Delete person by ID               |
-| GET    | /people/stats    | Show total count + avg age        |
-| GET    | /hello           | Welcome message                   |
+| Method | Endpoint             | Description                      |
+|--------|----------------------|----------------------------------|
+| GET    | `/hello`             | Returns welcome message          |
+| GET    | `/people`            | List all people                  |
+| GET    | `/people/{id}`       | Get person by ID                 |
+| GET    | `/people?query=Ali`  | Search people by name            |
+| GET    | `/people/stats`      | Get statistics                   |
+| POST   | `/people`            | Add a new person                 |
+| PUT    | `/people/{id}`       | Full update of a person          |
+| PATCH  | `/people/{id}`       | Partial update of a person       |
+| DELETE | `/people/{id}`       | Delete person by ID              |
+| DELETE | `/people`            | Delete all people                |
 
 ---
 
-## 📊 Example Stats Response
+## 📄 JSON Structure
 
 ```json
 {
-  "total": 2,
-  "average_age": 26,
-  "person_sample": [
-    { "id": 1, "name": "Diony", "age": 24, "phone": "12345" },
-    { "id": 2, "name": "Eren", "age": 28, "phone": "67890" }
-  ]
+  "id": 1,
+  "name": "Diony",
+  "age": 24,
+  "phone": "123456789"
 }
 ```
 
 ---
 
-## ✅ Tests & Coverage
+## 🧪 Running Tests
 
-This project includes a suite of unit tests using Go’s built-in `testing` package.  
-It uses an in-memory store (`MemoryStore`) to mock storage and isolate tests.
-
-### Run tests with verbose output:
+This project includes full test coverage for all endpoints and helper functions.
 
 ```bash
 go test -v
 ```
 
+You should see output similar to:
+
+```bash
+=== RUN   TestHelloHandler
+--- PASS: TestHelloHandler (0.00s)
+=== RUN   TestCreateAndGetPeople
+--- PASS: TestCreateAndGetPeople (0.00s)
+...
+PASS
+```
+
 ---
 
-## 📄 License
+## 🧠 Tech Stack
 
-This project is licensed under the MIT License.
+- Go (Golang)
+- `net/http` standard library
+- `httptest` for unit testing
+- In-memory slice-based data store
+- Designed to evolve into PostgreSQL or other DB
+
+---
+
+## 🧊 License
+
+MIT — use freely, modify safely.
+
+---
+
+## ✨ Author
+
+Made with ❤️ by [Diony](https://github.com/Diony-source)
