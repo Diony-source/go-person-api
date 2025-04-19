@@ -26,44 +26,60 @@ func findPersonByID(id int) (*Person, int) {
 	return nil, -1
 }
 
-func jsonError(w http.ResponseWriter, message string, status int) {
+func getIDFromPath(r *http.Request, prefix string) (int, error) {
+	idStr := strings.TrimPrefix(r.URL.Path, prefix)
+	var id int
+	_, err := fmt.Sscanf(idStr, "%d", &id)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func parseJSONBody(r *http.Request, v interface{}) error {
+	if r.Body == nil {
+		return fmt.Errorf("request body is empty")
+	}
+	defer r.Body.Close()
+	return json.NewDecoder(r.Body).Decode(v)
+}
+
+func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{
-		"error": message,
-	})
+	json.NewEncoder(w).Encode(v)
+}
+
+func jsonError(w http.ResponseWriter, message string, status int) {
+	writeJSON(w, status, map[string]string{"error": message})
 }
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	response := map[string]string{"message": "Hello, Diony! Welcome to your Go API 🎉"}
-	json.NewEncoder(w).Encode(response)
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Hello, Diony! Welcome to your Go API 🎉",
+	})
 }
 
 func getPeopleHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(people)
+	writeJSON(w, http.StatusOK, people)
 }
 
 func createPersonHandler(w http.ResponseWriter, r *http.Request) {
 	var newPerson Person
-	if err := json.NewDecoder(r.Body).Decode(&newPerson); err != nil {
+	if err := parseJSONBody(r, &newPerson); err != nil {
 		jsonError(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
+
 	newPerson.Id = nextId
 	nextId++
 	people = append(people, newPerson)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(newPerson)
+	writeJSON(w, http.StatusCreated, newPerson)
 }
 
 func getPersonByIDHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Path[len("/people/"):]
-	var id int
-	_, err := fmt.Sscanf(idStr, "%d", &id)
+	id, err := getIDFromPath(r, "/people/")
 	if err != nil {
 		jsonError(w, "Invalid ID", http.StatusBadRequest)
 		return
@@ -75,14 +91,11 @@ func getPersonByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(p)
+	writeJSON(w, http.StatusOK, p)
 }
 
 func updatePersonHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Path[len("/people/"):]
-	var id int
-	_, err := fmt.Sscanf(idStr, "%d", &id)
+	id, err := getIDFromPath(r, "/people/")
 	if err != nil {
 		jsonError(w, "Invalid ID", http.StatusBadRequest)
 		return
@@ -95,7 +108,7 @@ func updatePersonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var updated Person
-	if err := json.NewDecoder(r.Body).Decode(&updated); err != nil {
+	if err := parseJSONBody(r, &updated); err != nil {
 		jsonError(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
@@ -104,14 +117,43 @@ func updatePersonHandler(w http.ResponseWriter, r *http.Request) {
 	p.Age = updated.Age
 	p.Phone = updated.Phone
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(p)
+	writeJSON(w, http.StatusOK, p)
+}
+
+func patchPersonHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPath(r, "/people/")
+	if err != nil {
+		jsonError(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	p, _ := findPersonByID(id)
+	if p == nil {
+		jsonError(w, "Person not found", http.StatusNotFound)
+		return
+	}
+
+	var updated Person
+	if err := parseJSONBody(r, &updated); err != nil {
+		jsonError(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	if updated.Name != "" {
+		p.Name = updated.Name
+	}
+	if updated.Age != 0 {
+		p.Age = updated.Age
+	}
+	if updated.Phone != "" {
+		p.Phone = updated.Phone
+	}
+
+	writeJSON(w, http.StatusOK, p)
 }
 
 func deletePersonHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Path[len("/people/"):]
-	var id int
-	_, err := fmt.Sscanf(idStr, "%d", &id)
+	id, err := getIDFromPath(r, "/people/")
 	if err != nil {
 		jsonError(w, "Invalid ID", http.StatusBadRequest)
 		return
@@ -124,6 +166,11 @@ func deletePersonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	people = append(people[:index], people[index+1:]...)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func deleteAllPeopleHandler(w http.ResponseWriter, _ *http.Request) {
+	people = []Person{}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -141,51 +188,10 @@ func searchPeopleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(results)
+	writeJSON(w, http.StatusOK, results)
 }
 
-func deleteAllPeopleHandler(w http.ResponseWriter, _ *http.Request) {
-	people = []Person{}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func patchPersonHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Path[len("/people/"):]
-	var id int
-	_, err := fmt.Sscanf(idStr, "%d", &id)
-	if err != nil {
-		jsonError(w, "Invalid ID", http.StatusBadRequest)
-		return
-	}
-
-	p, _ := findPersonByID(id)
-	if p == nil {
-		jsonError(w, "Person not found", http.StatusNotFound)
-		return
-	}
-
-	var updated Person
-	if err := json.NewDecoder(r.Body).Decode(&updated); err != nil {
-		jsonError(w, "Invalid input", http.StatusBadRequest)
-		return
-	}
-
-	if updated.Name != "" {
-		p.Name = updated.Name
-	}
-	if updated.Age != 0 {
-		p.Age = updated.Age
-	}
-	if updated.Phone != "" {
-		p.Phone = updated.Phone
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(p)
-}
-
-func statsHandler(w http.ResponseWriter, r *http.Request) {
+func statsHandler(w http.ResponseWriter, _ *http.Request) {
 	total := len(people)
 	sum := 0
 	for _, p := range people {
@@ -203,8 +209,7 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 		"person_sample": people,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	writeJSON(w, http.StatusOK, stats)
 }
 
 func main() {
